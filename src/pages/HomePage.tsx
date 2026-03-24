@@ -8,6 +8,8 @@ import {
   calculateWeights,
 } from '@/utils/calc';
 import WeightTable from '@/components/WeightTable';
+import SectorDonutChart from '@/components/charts/SectorDonutChart';
+import AssetTreemap from '@/components/charts/AssetTreemap';
 
 export default function HomePage() {
   const { portfolio } = usePortfolioStore();
@@ -215,6 +217,14 @@ export default function HomePage() {
                   : <span> ({sectorValidation.diff}%p 미배분)</span>}
               </p>
             </div>
+          )}
+
+          {/* 섹터 비중 도넛 차트 */}
+          <SectorDonutChart sectors={sectorWeights} />
+
+          {/* 자산 배분 트리맵 */}
+          {Object.keys(quotes).length > 0 && (
+            <AssetTreemap sectors={sectorWeights} exchangeRate={exchangeRate} />
           )}
 
           {/* 섹터별 비중 */}

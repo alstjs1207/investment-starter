@@ -9,6 +9,7 @@ import {
 } from '@/utils/calc';
 import type { RebalanceItem, RebalanceAction } from '@/utils/calc';
 import type { Portfolio } from '@/types';
+import WeightCompareBarChart from '@/components/charts/WeightCompareBarChart';
 
 function ActionBadge({ action }: { action: RebalanceItem['action'] }) {
   if (action === 'sell') {
@@ -95,6 +96,12 @@ export default function RebalancePage() {
         </div>
       ) : (
         <>
+          {/* 목표 vs 현재 비중 비교 차트 */}
+          {(() => {
+            const weights = calculateWeights(portfolio, quotes, exchangeRate);
+            return <WeightCompareBarChart sectors={weights} />;
+          })()}
+
           {/* 면책 안내 */}
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
             <svg className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
