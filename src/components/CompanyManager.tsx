@@ -64,7 +64,7 @@ export default function CompanyManager({ sectorId }: Props) {
     const ticker = newTicker.trim();
     const weight = Number(newWeight);
     if (!name || !weight || weight <= 0) return;
-    addCompany(sectorId, { name, ticker: ticker || undefined, market: newMarket, targetWeight: weight });
+    addCompany(sectorId, { name, ticker: ticker || '', market: newMarket, targetWeight: weight });
     setNewName('');
     setNewTicker('');
     setNewWeight('');
