@@ -159,29 +159,31 @@ export default function SectorManager() {
         {/* 추가 폼 */}
         <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">새 섹터 추가</p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="섹터 이름 (예: IT)"
-              className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:flex-1"
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             />
-            <input
-              type="number"
-              value={newWeight}
-              onChange={(e) => setNewWeight(e.target.value)}
-              placeholder="비중"
-              className="w-24 rounded-lg border border-slate-300 bg-white px-3 py-2 text-right text-sm tabular-nums focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            />
-            <span className="text-sm text-slate-500">%</span>
-            <button
-              onClick={handleAdd}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
-            >
-              추가
-            </button>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={newWeight}
+                onChange={(e) => setNewWeight(e.target.value)}
+                placeholder="비중"
+                className="w-20 rounded-lg border border-slate-300 bg-white px-3 py-2 text-right text-sm tabular-nums focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:w-24"
+                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              />
+              <span className="text-sm text-slate-500">%</span>
+              <button
+                onClick={handleAdd}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+              >
+                추가
+              </button>
+            </div>
           </div>
         </div>
       </div>
