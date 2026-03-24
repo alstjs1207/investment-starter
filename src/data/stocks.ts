@@ -37,3 +37,62 @@ export const STOCKS: StockInfo[] = [
 ];
 
 export const STOCK_SECTORS = [...new Set(STOCKS.map((s) => s.sector))];
+
+/** 기본 종목 티커 Set (커스텀 종목과 중복 체크용) */
+export const DEFAULT_TICKERS = new Set(STOCKS.map((s) => s.ticker));
+
+/** JSON 파일에서 종목 배열을 파싱하고 유효성을 검증 */
+export function parseStockJson(raw: string): { stocks: StockInfo[]; errors: string[] } {
+  const errors: string[] = [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { stocks: [], errors: ['유효한 JSON 형식이 아닙니다.'] };
+  }
+
+  const arr = Array.isArray(parsed) ? parsed : (parsed as Record<string, unknown>).stocks;
+  if (!Array.isArray(arr)) {
+    return { stocks: [], errors: ['JSON은 배열이거나 { "stocks": [...] } 형식이어야 합니다.'] };
+  }
+
+  const validMarkets = new Set(['KRX', 'NYSE', 'NASDAQ']);
+  const stocks: StockInfo[] = [];
+
+  for (let i = 0; i < arr.length; i++) {
+    const item = arr[i];
+    if (!item || typeof item !== 'object') {
+      errors.push(`[${i}] 유효하지 않은 항목입니다.`);
+      continue;
+    }
+    const { name, ticker, market, sector } = item as Record<string, unknown>;
+    if (typeof name !== 'string' || !name.trim()) {
+      errors.push(`[${i}] name이 누락되었습니다.`);
+      continue;
+    }
+    if (typeof ticker !== 'string' || !ticker.trim()) {
+      errors.push(`[${i}] ticker가 누락되었습니다.`);
+      continue;
+    }
+    if (typeof market !== 'string' || !validMarkets.has(market)) {
+      errors.push(`[${i}] market은 KRX, NYSE, NASDAQ 중 하나여야 합니다.`);
+      continue;
+    }
+    if (typeof sector !== 'string' || !sector.trim()) {
+      errors.push(`[${i}] sector가 누락되었습니다.`);
+      continue;
+    }
+    if (DEFAULT_TICKERS.has(ticker.trim())) {
+      errors.push(`[${i}] "${name}" (${ticker})는 기본 종목에 이미 존재합니다.`);
+      continue;
+    }
+    stocks.push({
+      name: name.trim(),
+      ticker: ticker.trim(),
+      market: market as StockInfo['market'],
+      sector: sector.trim(),
+    });
+  }
+
+  return { stocks, errors };
+}

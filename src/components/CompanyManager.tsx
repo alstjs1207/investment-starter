@@ -10,6 +10,7 @@ import {
 import type { Company } from '@/types';
 import PurchaseForm from './PurchaseForm';
 import { STOCKS } from '@/data/stocks';
+import { useStockDirectoryStore } from '@/stores/stockDirectoryStore';
 
 interface Props {
   sectorId: string;
@@ -17,7 +18,10 @@ interface Props {
 
 export default function CompanyManager({ sectorId }: Props) {
   const { portfolio, addCompany, updateCompany, deleteCompany } = usePortfolioStore();
+  const { customStocks } = useStockDirectoryStore();
   const sector = portfolio.sectors.find((s) => s.id === sectorId);
+
+  const allStocks = [...STOCKS, ...customStocks];
 
   const [newName, setNewName] = useState('');
   const [newTicker, setNewTicker] = useState('');
@@ -34,7 +38,7 @@ export default function CompanyManager({ sectorId }: Props) {
     setNewName(value);
     if (value.trim().length > 0) {
       const q = value.trim().toLowerCase();
-      const matched = STOCKS.filter(
+      const matched = allStocks.filter(
         (s) => s.name.toLowerCase().includes(q) || s.ticker.toLowerCase().includes(q),
       );
       setSuggestions(matched);
