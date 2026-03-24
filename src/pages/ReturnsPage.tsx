@@ -228,40 +228,40 @@ export default function ReturnsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-400">
-                    <th className="px-5 py-2.5">종목</th>
-                    <th className="px-5 py-2.5 text-right">보유수량</th>
-                    <th className="hidden px-5 py-2.5 text-right sm:table-cell">평균단가</th>
-                    <th className="px-5 py-2.5 text-right">현재가</th>
-                    <th className="hidden px-5 py-2.5 text-right sm:table-cell">평가금액</th>
-                    <th className="px-5 py-2.5 text-right">손익</th>
-                    <th className="px-5 py-2.5 text-right">수익률</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 sm:px-5">종목</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right sm:px-5">보유수량</th>
+                    <th className="hidden whitespace-nowrap px-3 py-2.5 text-right sm:table-cell sm:px-5">평균단가</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right sm:px-5">현재가</th>
+                    <th className="hidden whitespace-nowrap px-3 py-2.5 text-right sm:table-cell sm:px-5">평가금액</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right sm:px-5">손익</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right sm:px-5">수익률</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sorted.map((c) => (
                     <tr key={c.companyId} className="border-b border-slate-50 transition-colors last:border-b-0 hover:bg-slate-50">
-                      <td className="px-5 py-3">
+                      <td className="whitespace-nowrap px-3 py-3 sm:px-5">
                         <Link to={`/stock/${c.companyId}`} className="font-medium text-emerald-600 hover:underline">
                           {c.name}
                         </Link>
                         <span className="ml-1 font-mono text-xs text-slate-400">{c.ticker}</span>
                       </td>
-                      <td className="tabular-nums px-5 py-3 text-right text-slate-700">{formatNumber(c.quantity)}주</td>
-                      <td className="hidden tabular-nums px-5 py-3 text-right text-slate-500 sm:table-cell">
+                      <td className="whitespace-nowrap tabular-nums px-3 py-3 text-right text-slate-700 sm:px-5">{formatNumber(c.quantity)}주</td>
+                      <td className="hidden whitespace-nowrap tabular-nums px-3 py-3 text-right text-slate-500 sm:table-cell sm:px-5">
                         {formatCurrency(c.avgPrice, c.currency)}
                       </td>
-                      <td className="tabular-nums px-5 py-3 text-right text-slate-700">
+                      <td className="whitespace-nowrap tabular-nums px-3 py-3 text-right text-slate-700 sm:px-5">
                         {formatCurrency(c.currentPrice, c.currency)}
                       </td>
-                      <td className="hidden tabular-nums px-5 py-3 text-right text-slate-700 sm:table-cell">
+                      <td className="hidden whitespace-nowrap tabular-nums px-3 py-3 text-right text-slate-700 sm:table-cell sm:px-5">
                         {formatCurrency(c.marketValue, c.currency)}
                       </td>
-                      <td className="tabular-nums px-5 py-3 text-right">
+                      <td className="whitespace-nowrap tabular-nums px-3 py-3 text-right sm:px-5">
                         <ProfitColor value={c.profitLoss}>
                           {c.profitLoss >= 0 ? '+' : ''}{formatCurrency(Math.abs(c.profitLoss), c.currency)}
                         </ProfitColor>
                       </td>
-                      <td className="tabular-nums px-5 py-3 text-right font-semibold">
+                      <td className="whitespace-nowrap tabular-nums px-3 py-3 text-right font-semibold sm:px-5">
                         <ProfitColor value={c.returnRate}>
                           {formatPercent(c.returnRate)}
                         </ProfitColor>
