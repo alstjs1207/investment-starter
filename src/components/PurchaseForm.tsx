@@ -48,47 +48,49 @@ export default function PurchaseForm({ sectorId, companyId, company, defaultCurr
       {sorted.length > 0 && (
         <div>
           <div className="overflow-hidden rounded-lg border border-slate-200">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50 text-left text-slate-500">
-                  <th className="px-3 py-2 font-medium">날짜</th>
-                  <th className="px-3 py-2 font-medium">유형</th>
-                  <th className="px-3 py-2 text-right font-medium">수량</th>
-                  <th className="px-3 py-2 text-right font-medium">단가</th>
-                  <th className="px-3 py-2 text-right font-medium">금액</th>
-                  <th className="px-3 py-2 text-right font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((p) => (
-                  <tr key={p.id} className="border-b border-slate-50 last:border-b-0">
-                    <td className="px-3 py-2.5 text-slate-500">{p.date}</td>
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        p.type === 'buy'
-                          ? 'bg-red-50 text-red-600'
-                          : 'bg-blue-50 text-blue-600'
-                      }`}>
-                        {p.type === 'buy' ? '매수' : '매도'}
-                      </span>
-                    </td>
-                    <td className="tabular-nums px-3 py-2.5 text-right text-slate-700">{formatNumber(p.quantity)}주</td>
-                    <td className="tabular-nums px-3 py-2.5 text-right text-slate-500">{formatCurrency(p.pricePerShare, p.currency)}</td>
-                    <td className="tabular-nums px-3 py-2.5 text-right font-medium text-slate-900">{formatCurrency(p.quantity * p.pricePerShare, p.currency)}</td>
-                    <td className="px-3 py-2.5 text-right">
-                      <button
-                        onClick={() => deletePurchase(sectorId, companyId, p.id)}
-                        className="rounded p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50 text-left text-slate-500">
+                    <th className="whitespace-nowrap px-2 py-2 font-medium sm:px-3">날짜</th>
+                    <th className="whitespace-nowrap px-2 py-2 font-medium sm:px-3">유형</th>
+                    <th className="whitespace-nowrap px-2 py-2 text-right font-medium sm:px-3">수량</th>
+                    <th className="whitespace-nowrap px-2 py-2 text-right font-medium sm:px-3">단가</th>
+                    <th className="whitespace-nowrap px-2 py-2 text-right font-medium sm:px-3">금액</th>
+                    <th className="px-1 py-2 text-right font-medium sm:px-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sorted.map((p) => (
+                    <tr key={p.id} className="border-b border-slate-50 last:border-b-0">
+                      <td className="whitespace-nowrap px-2 py-2.5 text-slate-500 sm:px-3">{p.date}</td>
+                      <td className="whitespace-nowrap px-2 py-2.5 sm:px-3">
+                        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-semibold sm:px-2 ${
+                          p.type === 'buy'
+                            ? 'bg-red-50 text-red-600'
+                            : 'bg-blue-50 text-blue-600'
+                        }`}>
+                          {p.type === 'buy' ? '매수' : '매도'}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap tabular-nums px-2 py-2.5 text-right text-slate-700 sm:px-3">{formatNumber(p.quantity)}주</td>
+                      <td className="whitespace-nowrap tabular-nums px-2 py-2.5 text-right text-slate-500 sm:px-3">{formatCurrency(p.pricePerShare, p.currency)}</td>
+                      <td className="whitespace-nowrap tabular-nums px-2 py-2.5 text-right font-medium text-slate-900 sm:px-3">{formatCurrency(p.quantity * p.pricePerShare, p.currency)}</td>
+                      <td className="px-1 py-2.5 text-right sm:px-3">
+                        <button
+                          onClick={() => deletePurchase(sectorId, companyId, p.id)}
+                          className="rounded p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
             <svg className="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
