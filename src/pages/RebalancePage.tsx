@@ -7,7 +7,7 @@ import {
   formatCurrency,
   formatNumber,
 } from '@/utils/calc';
-import type { RebalanceItem } from '@/utils/calc';
+import type { RebalanceItem, RebalanceAction } from '@/utils/calc';
 import type { Portfolio } from '@/types';
 
 function ActionBadge({ action }: { action: RebalanceItem['action'] }) {

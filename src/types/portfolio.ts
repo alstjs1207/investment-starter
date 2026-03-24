@@ -11,7 +11,7 @@ export interface Purchase {
 export interface Company {
   id: string;
   name: string;
-  ticker?: string;
+  ticker: string;
   market: 'KRX' | 'NYSE' | 'NASDAQ';
   targetWeight: number;
   purchased: boolean;
