@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useWatchlistStore } from '@/stores/watchlistStore';
 import { STOCKS } from '@/data/stocks';
+import { useStockDirectoryStore } from '@/stores/stockDirectoryStore';
 import type { WatchlistItem } from '@/types';
 
 interface Props {
@@ -12,6 +13,9 @@ interface Props {
 export default function WatchlistForm({ editItem, onDone }: Props) {
   const { portfolio } = usePortfolioStore();
   const { addItem, updateItem } = useWatchlistStore();
+  const { customStocks } = useStockDirectoryStore();
+
+  const allStocks = [...STOCKS, ...customStocks];
 
   const [name, setName] = useState(editItem?.name ?? '');
   const [ticker, setTicker] = useState(editItem?.ticker ?? '');
@@ -29,7 +33,7 @@ export default function WatchlistForm({ editItem, onDone }: Props) {
     setName(value);
     if (value.trim().length > 0) {
       const q = value.trim().toLowerCase();
-      const matched = STOCKS.filter(
+      const matched = allStocks.filter(
         (s) => s.name.toLowerCase().includes(q) || s.ticker.toLowerCase().includes(q),
       );
       setSuggestions(matched);
