@@ -6,6 +6,8 @@ import {
   formatCurrency,
   formatNumber,
 } from '@/utils/calc';
+import StockReturnBarChart from '@/components/charts/StockReturnBarChart';
+import SectorReturnBarChart from '@/components/charts/SectorReturnBarChart';
 
 function ProfitColor({ value, children }: { value: number; children: React.ReactNode }) {
   const color = value > 0 ? 'text-red-600' : value < 0 ? 'text-blue-600' : 'text-slate-600';
@@ -167,56 +169,24 @@ export default function ReturnsPage() {
             </div>
           )}
 
-          {/* 섹터별 수익률 바 차트 */}
-          {ret.sectors.filter((s) => s.companies.length > 0).length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-slate-50/50 px-5 py-3">
-                <h2 className="text-sm font-semibold text-slate-900">섹터별 수익률</h2>
-              </div>
-              <div className="space-y-4 p-5">
-                {ret.sectors
-                  .filter((s) => s.companies.length > 0)
-                  .map((sector) => {
-                    const maxAbs = Math.max(
-                      ...ret.sectors
-                        .filter((s) => s.companies.length > 0)
-                        .map((s) => Math.abs(s.returnRate)),
-                      1,
-                    );
-                    const barWidth = Math.min(Math.abs(sector.returnRate) / maxAbs * 100, 100);
-                    const isPositive = sector.returnRate >= 0;
+          {/* 종목별 수익률 바 차트 (recharts) */}
+          {allCompanies.length > 0 && (
+            <StockReturnBarChart
+              stocks={allCompanies.map((c) => ({ name: c.name, returnRate: c.returnRate }))}
+            />
+          )}
 
-                    return (
-                      <div key={sector.sectorId}>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-500">
-                              {sector.name.charAt(0)}
-                            </div>
-                            <span className="font-medium text-slate-800">{sector.name}</span>
-                          </span>
-                          <span className="flex items-center gap-3">
-                            <span className="tabular-nums text-xs text-slate-400">
-                              {formatCurrency(sector.marketValueKRW, 'KRW')}
-                            </span>
-                            <ProfitColor value={sector.returnRate}>
-                              <span className="tabular-nums font-semibold">{formatPercent(sector.returnRate)}</span>
-                            </ProfitColor>
-                          </span>
-                        </div>
-                        <div className="ml-9 mt-1 flex h-2 overflow-hidden rounded-full bg-slate-100">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              isPositive ? 'bg-red-400' : 'bg-blue-400'
-                            }`}
-                            style={{ width: `${barWidth}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
+          {/* 섹터별 수익률 바 차트 (recharts) */}
+          {ret.sectors.filter((s) => s.companies.length > 0).length > 0 && (
+            <SectorReturnBarChart
+              sectors={ret.sectors
+                .filter((s) => s.companies.length > 0)
+                .map((s) => ({
+                  name: s.name,
+                  returnRate: s.returnRate,
+                  marketValueKRW: s.marketValueKRW,
+                }))}
+            />
           )}
 
           {/* 종목별 상세 테이블 */}
