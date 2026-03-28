@@ -6,6 +6,7 @@ import {
   formatNumber,
   validateSectorWeights,
   calculateWeights,
+  calculateRebalance,
 } from '@/utils/calc';
 import WeightTable from '@/components/WeightTable';
 import SectorDonutChart from '@/components/charts/SectorDonutChart';
@@ -29,11 +30,7 @@ export default function HomePage() {
 
   const sectorWeights = calculateWeights(portfolio, quotes, exchangeRate);
 
-  const deviationCount = sectorWeights.reduce((sum, s) => {
-    const sectorDeviation = s.marketStatus !== 'normal' ? 1 : 0;
-    const companyDeviations = s.companies.filter((c) => c.marketStatus !== 'normal').length;
-    return sum + sectorDeviation + companyDeviations;
-  }, 0);
+  const deviationCount = calculateRebalance(portfolio, quotes, exchangeRate).length;
 
   return (
     <div className="space-y-5">

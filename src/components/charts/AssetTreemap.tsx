@@ -3,8 +3,8 @@ import type { SectorWeight } from '@/utils/calc';
 import { formatNumber } from '@/utils/calc';
 
 const COLORS = [
-  '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#6366f1',
+  '#059669', '#2563eb', '#d97706', '#dc2626', '#7c3aed',
+  '#0891b2', '#ea580c', '#db2777', '#0d9488', '#4f46e5',
 ];
 
 interface Props {
@@ -33,6 +33,10 @@ interface ContentProps {
 function CustomContent({ x, y, width, height, name, color }: ContentProps) {
   if (width < 30 || height < 20) return null;
 
+  const fontSize = width > 120 ? 14 : width > 80 ? 12 : 10;
+  const maxChars = Math.max(4, Math.floor(width / (fontSize * 0.7)));
+  const label = name.length > maxChars ? name.slice(0, maxChars - 1) + '…' : name;
+
   return (
     <g>
       <rect
@@ -42,21 +46,27 @@ function CustomContent({ x, y, width, height, name, color }: ContentProps) {
         height={height}
         rx={4}
         fill={color}
-        fillOpacity={0.85}
         stroke="#fff"
-        strokeWidth={2}
+        strokeWidth={3}
       />
-      {width > 50 && height > 28 && (
+      {width > 40 && height > 24 && (
         <text
           x={x + width / 2}
           y={y + height / 2}
           textAnchor="middle"
           dominantBaseline="central"
           fill="#fff"
-          fontSize={width > 80 ? 11 : 9}
-          fontWeight={600}
+          fontSize={fontSize}
+          fontWeight={700}
+          style={{
+            textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 0 6px rgba(0,0,0,0.3)',
+            paintOrder: 'stroke fill',
+            stroke: 'rgba(0,0,0,0.3)',
+            strokeWidth: 2,
+            strokeLinejoin: 'round',
+          } as React.CSSProperties}
         >
-          {name.length > 8 ? name.slice(0, 7) + '…' : name}
+          {label}
         </text>
       )}
     </g>

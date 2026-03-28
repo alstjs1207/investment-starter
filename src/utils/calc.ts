@@ -171,10 +171,12 @@ export function calculatePortfolioReturn(
   };
 }
 
-/** 매수 가능 수량 (배정금액 ÷ 현재가) */
-export function getBuyableQuantity(budget: number, currentPrice: number): number {
+/** 매수 가능 수량 (잔여 배정금액 ÷ 현재가) */
+export function getBuyableQuantity(budget: number, currentPrice: number, purchasedAmount: number = 0): number {
   if (currentPrice <= 0) return 0;
-  return Math.floor(budget / currentPrice);
+  const remaining = budget - purchasedAmount;
+  if (remaining <= 0) return 0;
+  return Math.floor(remaining / currentPrice);
 }
 
 /** 섹터 내 기업 비중 합계 */
@@ -452,8 +454,12 @@ export interface RebalanceItem {
 }
 
 /**
- * 시가 기준 현재 비중과 목표 비중 차이를 계산하여
- * 종목별 매도/매수 수량을 추천합니다.
+ * 섹터 단위 리밸런싱: 섹터의 현재 비중과 목표 비중 차이를 기준으로
+ * 초과 섹터에서는 매도, 미달 섹터에서는 매수를 추천합니다.
+ *
+ * 1) 섹터별 초과/미달 금액(KRW)을 계산
+ * 2) 초과 섹터 → 개별 종목 중 초과 비율이 큰 순서대로 매도 (섹터 목표 도달까지)
+ * 3) 미달 섹터 → 개별 종목 중 미달 비율이 큰 순서대로 매수 (섹터 목표 도달까지)
  */
 export function calculateRebalance(
   portfolio: Portfolio,
@@ -463,9 +469,7 @@ export function calculateRebalance(
   const rate = exchangeRate ?? 1300;
   const weights = calculateWeights(portfolio, quotes, exchangeRate);
 
-  // 목표 수량 계산의 기준금액: 전체 예산 (목표 비중이 예산 대비로 설정됨)
   const baseKRW = portfolio.totalBudget;
-
   if (baseKRW === 0) return [];
 
   // 보유 종목이 없으면 리밸런싱 대상 없음
@@ -480,10 +484,31 @@ export function calculateRebalance(
     const sector = portfolio.sectors.find((s) => s.id === sw.sectorId);
     if (!sector) continue;
 
-    // 섹터 단위 액션 판단 (예산 기준 시가 비중 — 앱 전체와 동일한 기준)
     const sectorMarketDiff = sw.marketDiff;
     const sectorAction: RebalanceAction =
       sectorMarketDiff > 0.01 ? 'sell' : sectorMarketDiff < -0.01 ? 'buy' : 'hold';
+
+    // 섹터의 초과/미달 금액 (KRW)
+    const sectorCurrentKRW = sw.marketValueKRW + sw.marketValueUSD * rate;
+    const sectorTargetKRW = baseKRW * (sw.targetWeight / 100);
+    let sectorGapKRW = Math.abs(sectorCurrentKRW - sectorTargetKRW);
+
+    // 종목별 초과/미달 정보 수집
+    type Candidate = {
+      company: Company;
+      cw: CompanyWeight;
+      currentQty: number;
+      targetQty: number;
+      delta: number;       // 목표수량 - 현재수량 (양수:매수필요, 음수:매도필요)
+      gapKRW: number;      // |현재시가KRW - 목표금액KRW|
+      priceInCurrency: number;
+      isKRX: boolean;
+      currency: 'KRW' | 'USD';
+    };
+
+    const candidates: Candidate[] = [];
+    // delta=0인 종목도 수집 (미달 섹터에서 floor 누적 손실 보정용)
+    const atTargetStocks: Candidate[] = [];
 
     for (const cw of sw.companies) {
       const company = sector.companies.find((c) => c.id === cw.companyId);
@@ -496,29 +521,91 @@ export function calculateRebalance(
       const isKRX = company.market === 'KRX';
       const currency: 'KRW' | 'USD' = isKRX ? 'KRW' : 'USD';
 
-      // 목표 금액: 전체 예산 × 기업 목표비중
       const companyTargetKRW = baseKRW * (cw.targetWeight / 100);
-
-      // 목표 금액을 해당 통화로 변환
       const companyTargetInCurrency = isKRX ? companyTargetKRW : companyTargetKRW / rate;
-
-      // 목표 수량 (내림)
-      const targetQty = Math.floor(companyTargetInCurrency / quote.price);
+      const exactTargetQty = companyTargetInCurrency / quote.price;
+      const targetQty = Math.floor(exactTargetQty);
       const delta = targetQty - currentQty;
 
-      if (delta === 0) continue;
+      const currentMarketKRW = isKRX
+        ? currentQty * quote.price
+        : currentQty * quote.price * rate;
+      const gapKRW = Math.abs(currentMarketKRW - companyTargetKRW);
+      const entry: Candidate = { company, cw, currentQty, targetQty, delta, gapKRW, priceInCurrency: quote.price, isKRX, currency };
 
-      const action: RebalanceAction = delta > 0 ? 'buy' : 'sell';
+      if (delta === 0) {
+        // floor 소수점 잔여분이 있는 종목: 미달 섹터에서 1주 추가 매수 후보
+        const fractional = exactTargetQty - targetQty;
+        if (fractional > 0.01) {
+          atTargetStocks.push(entry);
+        }
+        continue;
+      }
+
+      // 섹터 초과 → 개별 종목 중 초과인 것만 매도 후보
+      // 섹터 미달 → 개별 종목 중 미달인 것만 매수 후보
+      // 섹터 정상(hold) → 초과/미달 모두 후보 (인트라-섹터 재분배)
+      if (sectorAction === 'sell' && delta < 0) {
+        candidates.push(entry);
+      } else if (sectorAction === 'buy' && delta > 0) {
+        candidates.push(entry);
+      } else if (sectorAction === 'hold') {
+        candidates.push(entry);
+      }
+    }
+
+    // 미달 섹터에서 매수 후보가 없으면, delta=0 종목에서 1주씩 추가 매수
+    // (floor 내림으로 인한 섹터 미달 보정)
+    if (sectorAction === 'buy' && candidates.length === 0 && atTargetStocks.length > 0) {
+      // 주가가 저렴한 순서대로 (같은 금액으로 더 많은 비중 확보)
+      atTargetStocks.sort((a, b) => {
+        const aKRW = a.isKRX ? a.priceInCurrency : a.priceInCurrency * rate;
+        const bKRW = b.isKRX ? b.priceInCurrency : b.priceInCurrency * rate;
+        return aKRW - bKRW;
+      });
+      for (const stock of atTargetStocks) {
+        candidates.push({ ...stock, delta: 1, gapKRW: stock.isKRX ? stock.priceInCurrency : stock.priceInCurrency * rate });
+      }
+    }
+
+    // 초과/미달 금액이 큰 순서대로 정렬
+    candidates.sort((a, b) => b.gapKRW - a.gapKRW);
+
+    // hold 섹터: 개별 종목 목표 수량 그대로 (섹터 갭 제한 없음)
+    // over/under 섹터: 섹터 갭이 소진될 때까지만
+    for (const c of candidates) {
+      if (sectorAction !== 'hold' && sectorGapKRW <= 0) break;
+
+      const perShareKRW = c.isKRX ? c.priceInCurrency : c.priceInCurrency * rate;
+      const maxDeltaQty = Math.abs(c.delta);
+
+      let adjustQty: number;
+      if (sectorAction === 'hold') {
+        // 인트라-섹터 재분배: 개별 종목 목표 수량 그대로 적용
+        adjustQty = maxDeltaQty;
+      } else {
+        // 섹터 갭 내에서 가능한 수량
+        const qtyByGap = Math.floor(sectorGapKRW / perShareKRW);
+        adjustQty = Math.min(maxDeltaQty, Math.max(qtyByGap, 1));
+        // 남은 갭보다 1주 가격이 2배 이상 크면 건너뜀 (과도한 조정 방지)
+        if (perShareKRW > sectorGapKRW * 2) continue;
+      }
+
+      if (adjustQty <= 0) continue;
+
+      const action: RebalanceAction = c.delta < 0 ? 'sell' : 'buy';
+      const newTargetQty = action === 'sell'
+        ? c.currentQty - adjustQty
+        : c.currentQty + adjustQty;
 
       // 매도 시 실현 손익 계산
       let realizedPnL: number | null = null;
       let realizedPnLRate: number | null = null;
       if (action === 'sell') {
-        const avgPrice = getAveragePrice(company);
+        const avgPrice = getAveragePrice(c.company);
         if (avgPrice > 0) {
-          const sellQty = Math.abs(delta);
-          realizedPnL = sellQty * (quote.price - avgPrice);
-          const costBasis = sellQty * avgPrice;
+          realizedPnL = adjustQty * (c.priceInCurrency - avgPrice);
+          const costBasis = adjustQty * avgPrice;
           realizedPnLRate = costBasis > 0 ? (realizedPnL / costBasis) * 100 : 0;
         }
       }
@@ -526,22 +613,24 @@ export function calculateRebalance(
       items.push({
         sectorId: sw.sectorId,
         sectorName: sw.name,
-        companyId: cw.companyId,
-        name: cw.name,
-        ticker: cw.ticker,
-        market: cw.market,
+        companyId: c.cw.companyId,
+        name: c.cw.name,
+        ticker: c.cw.ticker,
+        market: c.cw.market,
         action,
-        currentQuantity: currentQty,
-        targetQuantity: targetQty,
-        deltaQuantity: Math.abs(delta),
-        currentPrice: quote.price,
-        estimatedAmount: Math.abs(delta) * quote.price,
-        currency,
-        sectorAction: sectorAction !== 'hold' ? sectorAction : null,
+        currentQuantity: c.currentQty,
+        targetQuantity: newTargetQty,
+        deltaQuantity: adjustQty,
+        currentPrice: c.priceInCurrency,
+        estimatedAmount: adjustQty * c.priceInCurrency,
+        currency: c.currency,
+        sectorAction,
         sectorMarketDiff,
         realizedPnL,
         realizedPnLRate,
       });
+
+      sectorGapKRW -= adjustQty * perShareKRW;
     }
   }
 
