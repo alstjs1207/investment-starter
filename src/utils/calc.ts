@@ -171,10 +171,12 @@ export function calculatePortfolioReturn(
   };
 }
 
-/** 매수 가능 수량 (배정금액 ÷ 현재가) */
-export function getBuyableQuantity(budget: number, currentPrice: number): number {
+/** 매수 가능 수량 (잔여 배정금액 ÷ 현재가) */
+export function getBuyableQuantity(budget: number, currentPrice: number, purchasedAmount: number = 0): number {
   if (currentPrice <= 0) return 0;
-  return Math.floor(budget / currentPrice);
+  const remaining = budget - purchasedAmount;
+  if (remaining <= 0) return 0;
+  return Math.floor(remaining / currentPrice);
 }
 
 /** 섹터 내 기업 비중 합계 */

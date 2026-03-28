@@ -64,7 +64,9 @@ export default function StockDetailPage() {
   const purchaseTotal = getTotalPurchaseAmount(foundCompany);
   const quantity = getTotalQuantity(foundCompany);
   const quote = quotes[foundCompany.ticker];
-  const buyable = quote ? getBuyableQuantity(budget, quote.price) : null;
+  const rate = exchangeRate ?? 1300;
+  const budgetInCurrency = currency === 'KRW' ? budget : budget / rate;
+  const buyable = quote ? getBuyableQuantity(budgetInCurrency, quote.price, purchaseTotal) : null;
   const marketValue = quote ? quote.price * quantity : null;
 
   return (
@@ -174,6 +176,11 @@ export default function StockDetailPage() {
           <p className="mt-2 tabular-nums text-lg font-bold text-slate-900">
             {purchaseTotal > 0 ? formatCurrency(purchaseTotal, currency) : '-'}
           </p>
+          {purchaseTotal > 0 && currency === 'USD' && exchangeRate && (
+            <p className="mt-0.5 tabular-nums text-xs text-slate-400">
+              ≈ {formatNumber(Math.round(purchaseTotal * exchangeRate))}원
+            </p>
+          )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2">
