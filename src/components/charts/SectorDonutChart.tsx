@@ -15,9 +15,45 @@ interface ChartData {
   value: number;
 }
 
-function renderLabel({ name, value }: { name?: string; value?: number }) {
+function shortenName(name: string) {
+  // "A 섹터 - AI·반도체/부품·저장장치" → "AI·반도체/부품·저장장치"
+  return name.replace(/^[A-Z]\s*섹터\s*[-–—]\s*/, '');
+}
+
+function renderLabel({
+  cx,
+  cy,
+  midAngle,
+  outerRadius,
+  name,
+  value,
+}: {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  outerRadius: number;
+  name?: string;
+  value?: number;
+}) {
   if (!value || value < 2) return null;
-  return `${name ?? ''} ${value.toFixed(1)}%`;
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius + 14;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const short = shortenName(name ?? '');
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize={11}
+      fill="#475569"
+      fontWeight={500}
+    >
+      {short} {value.toFixed(1)}%
+    </text>
+  );
 }
 
 export default function SectorDonutChart({ sectors }: Props) {
@@ -42,14 +78,14 @@ export default function SectorDonutChart({ sectors }: Props) {
         {/* 목표 비중 */}
         <div className="flex flex-col items-center px-4 py-4">
           <p className="mb-2 text-xs font-medium text-slate-500">목표 비중</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <Pie
                 data={targetData}
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
-                outerRadius={80}
+                innerRadius={45}
+                outerRadius={70}
                 dataKey="value"
                 label={renderLabel}
                 labelLine={false}
@@ -71,14 +107,14 @@ export default function SectorDonutChart({ sectors }: Props) {
         {hasMarketData && (
           <div className="flex flex-col items-center border-t border-slate-100 px-4 py-4 sm:border-l sm:border-t-0">
             <p className="mb-2 text-xs font-medium text-slate-500">현재 비중 (시가)</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <Pie
                   data={currentData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
+                  innerRadius={45}
+                  outerRadius={70}
                   dataKey="value"
                   label={renderLabel}
                   labelLine={false}

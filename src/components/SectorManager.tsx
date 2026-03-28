@@ -133,7 +133,12 @@ export default function SectorManager() {
                         </svg>
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); deleteSector(sector.id); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`"${sector.name}" 섹터를 삭제하시겠습니까?\n포함된 ${sector.companies.length}개 종목도 함께 삭제됩니다.`)) {
+                            deleteSector(sector.id);
+                          }
+                        }}
                         className="rounded p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
                       >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
