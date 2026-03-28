@@ -20,21 +20,8 @@ function shortenName(name: string) {
   return name.replace(/^[A-Z]\s*섹터\s*[-–—]\s*/, '');
 }
 
-function renderLabel({
-  cx,
-  cy,
-  midAngle,
-  outerRadius,
-  name,
-  value,
-}: {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  outerRadius: number;
-  name?: string;
-  value?: number;
-}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderLabel({ cx, cy, midAngle, outerRadius, name, value }: any) {
   if (!value || value < 2) return null;
   const RADIAN = Math.PI / 180;
   const radius = outerRadius + 14;
