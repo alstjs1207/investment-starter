@@ -843,8 +843,10 @@ describe('calculateRebalance', () => {
     expect(items).toHaveLength(0);
   });
 
-  it('다중 섹터 다중 기업 복합 리밸런싱', () => {
+  it('다중 섹터 다중 기업 복합 리밸런싱 (섹터 단위)', () => {
     // 총 시가: 10,000 + 10,000 + 10,000 = 30,000
+    // IT 섹터: 시가 20,000/30,000 = 66.7%, 목표 60% → 초과 (갭 2,000)
+    // 금융 섹터: 시가 10,000/30,000 = 33.3%, 목표 40% → 미달 (갭 2,000)
     const portfolio = mockPortfolio({
       totalBudget: 30_000,
       sectors: [
@@ -870,28 +872,20 @@ describe('calculateRebalance', () => {
       ],
     });
 
-    // 모두 동일 가격
     const quotes = { 'A': { price: 1000 }, 'B': { price: 1000 }, 'C': { price: 1000 } };
     const items = calculateRebalance(portfolio, quotes, 1300);
 
-    // 예산 30,000
-    // A 목표: 30,000×42% = 12,600 → 12주
-    // B 목표: 30,000×18% = 5,400 → 5주
-    // C 목표: 30,000×40% = 12,000 → 12주
-
-    // A: 현재 10 → 목표 12 → 매수 2
-    const itemA = items.find((i) => i.ticker === 'A');
-    expect(itemA).toBeDefined();
-    expect(itemA!.action).toBe('buy');
-    expect(itemA!.deltaQuantity).toBe(2);
-
-    // B: 현재 10 → 목표 5 → 매도 5
+    // IT 초과 → B(초과 종목)에서 섹터 갭(2,000)만큼 매도 = 2주
     const itemB = items.find((i) => i.ticker === 'B');
     expect(itemB).toBeDefined();
     expect(itemB!.action).toBe('sell');
-    expect(itemB!.deltaQuantity).toBe(5);
+    expect(itemB!.deltaQuantity).toBe(2);
 
-    // C: 현재 10 → 목표 12 → 매수 2
+    // IT 초과 → A는 미달이지만 섹터가 초과이므로 매수 추천 안 함
+    const itemA = items.find((i) => i.ticker === 'A');
+    expect(itemA).toBeUndefined();
+
+    // 금융 미달 → C 매수 (섹터 갭 2,000 = 2주)
     const itemC = items.find((i) => i.ticker === 'C');
     expect(itemC).toBeDefined();
     expect(itemC!.action).toBe('buy');
@@ -919,6 +913,134 @@ describe('calculateRebalance', () => {
     for (const item of items) {
       expect(item.estimatedAmount).toBe(item.deltaQuantity * item.currentPrice);
     }
+  });
+
+  it('미매수 종목이 있는 섹터에서는 매도 추천하지 않음', () => {
+    // A섹터 목표 50%, 기업 3개 중 1개만 과다 매수, 나머지 미매수
+    // → 섹터가 불완전하므로 기존 종목 매도를 추천하면 안 됨
+    const overCompany = mockCompany({
+      id: 'c1', ticker: '005930', targetWeight: 10,
+      purchases: [{ id: 'p1', type: 'buy', date: '2026-03-10', quantity: 30, pricePerShare: 100000, currency: 'KRW' }],
+    });
+    const emptyCompany1 = mockCompany({
+      id: 'c2', ticker: '000660', targetWeight: 20, purchased: false, purchases: [],
+    });
+    const emptyCompany2 = mockCompany({
+      id: 'c3', ticker: '009150', targetWeight: 20, purchased: false, purchases: [],
+    });
+    const portfolio = mockPortfolio({
+      totalBudget: 10_000_000,
+      sectors: [mockSector({
+        id: 's1', targetWeight: 50,
+        companies: [overCompany, emptyCompany1, emptyCompany2],
+      })],
+    });
+
+    const quotes = { '005930': { price: 100000 } };
+    const items = calculateRebalance(portfolio, quotes, 1300);
+
+    expect(items.filter((i) => i.action === 'sell')).toHaveLength(0);
+  });
+
+  it('섹터 초과 시 초과 종목을 섹터 갭만큼만 매도 추천', () => {
+    // 섹터 목표 60%, 시가 70% → 10%p 초과 (갭 500,000)
+    // 미매수 종목 유무와 무관하게 섹터를 목표까지 매도 추천
+    const overCompany = mockCompany({
+      id: 'c1', ticker: '005930', targetWeight: 25,
+      purchases: [{ id: 'p1', type: 'buy', date: '2026-03-10', quantity: 30, pricePerShare: 100000, currency: 'KRW' }],
+    });
+    const underCompany = mockCompany({
+      id: 'c2', ticker: '000660', targetWeight: 25,
+      purchases: [{ id: 'p1', type: 'buy', date: '2026-03-10', quantity: 5, pricePerShare: 100000, currency: 'KRW' }],
+    });
+    const emptyCompany = mockCompany({
+      id: 'c3', ticker: '009150', targetWeight: 10, purchased: false, purchases: [],
+    });
+    const portfolio = mockPortfolio({
+      totalBudget: 5_000_000,
+      sectors: [mockSector({
+        id: 's1', targetWeight: 60,
+        companies: [overCompany, underCompany, emptyCompany],
+      })],
+    });
+
+    // 섹터 시가: (30+5)×100,000 = 3,500,000 → 70%
+    // 섹터 목표: 5,000,000×60% = 3,000,000 → 갭 500,000
+    const quotes = { '005930': { price: 100000 }, '000660': { price: 100000 } };
+    const items = calculateRebalance(portfolio, quotes, 1300);
+
+    // overCompany만 매도 후보 (delta < 0), 갭 500,000 / 100,000 = 5주
+    const sellItems = items.filter((i) => i.action === 'sell');
+    expect(sellItems).toHaveLength(1);
+    expect(sellItems[0].ticker).toBe('005930');
+    expect(sellItems[0].deltaQuantity).toBe(5);
+
+    // underCompany는 미달이지만 섹터가 초과이므로 매수 추천 안 함
+    const buyItems = items.filter((i) => i.action === 'buy');
+    expect(buyItems).toHaveLength(0);
+  });
+
+  it('모든 종목이 매수된 섹터에서는 초과 종목 매도 추천함', () => {
+    // 두 섹터 모두 종목이 전부 매수된 상태 → 초과 종목 매도 정상 동작
+    const itCompany = mockCompany({
+      id: 'c1', ticker: '005930', targetWeight: 30,
+      purchases: [{ id: 'p1', type: 'buy', date: '2026-03-10', quantity: 20, pricePerShare: 100000, currency: 'KRW' }],
+    });
+    const finCompany = mockCompany({
+      id: 'c2', ticker: '055550', targetWeight: 70,
+      purchases: [{ id: 'p1', type: 'buy', date: '2026-03-10', quantity: 5, pricePerShare: 100000, currency: 'KRW' }],
+    });
+    const portfolio = mockPortfolio({
+      totalBudget: 2_500_000,
+      sectors: [
+        mockSector({ id: 's1', targetWeight: 30, companies: [itCompany] }),
+        mockSector({ id: 's2', targetWeight: 70, companies: [finCompany] }),
+      ],
+    });
+
+    const quotes = { '005930': { price: 100000 }, '055550': { price: 100000 } };
+    const items = calculateRebalance(portfolio, quotes, 1300);
+
+    const itSell = items.find((i) => i.ticker === '005930' && i.action === 'sell');
+    expect(itSell).toBeDefined();
+  });
+
+  it('미달 섹터에서 floor 누적 손실 시 1주 추가 매수 추천', () => {
+    // 섹터 목표 50%, 종목 2개 모두 개별 목표 수량 도달(floor)했지만
+    // floor 내림으로 섹터 전체는 미달인 경우 → 저가 종목부터 1주씩 추가 매수
+    const companyA = mockCompany({
+      id: 'c1', ticker: 'A', targetWeight: 30,
+      // 목표: 100,000 × 30% = 30,000 / 7,000 = 4.28 → floor 4. 현재 4주 → delta=0
+      purchases: [{ id: 'p1', type: 'buy', date: '2026-01-01', quantity: 4, pricePerShare: 7000, currency: 'KRW' }],
+    });
+    const companyB = mockCompany({
+      id: 'c2', ticker: 'B', targetWeight: 20,
+      // 목표: 100,000 × 20% = 20,000 / 9,000 = 2.22 → floor 2. 현재 2주 → delta=0
+      purchases: [{ id: 'p1', type: 'buy', date: '2026-01-01', quantity: 2, pricePerShare: 9000, currency: 'KRW' }],
+    });
+    const portfolio = mockPortfolio({
+      totalBudget: 100_000,
+      sectors: [
+        mockSector({ id: 's1', targetWeight: 50, companies: [companyA, companyB] }),
+        mockSector({
+          id: 's2', targetWeight: 50,
+          companies: [mockCompany({
+            id: 'c3', ticker: 'C', targetWeight: 50,
+            purchases: [{ id: 'p1', type: 'buy', date: '2026-01-01', quantity: 10, pricePerShare: 7000, currency: 'KRW' }],
+          })],
+        }),
+      ],
+    });
+
+    // s1 시가: 4×7,000 + 2×9,000 = 46,000 → 46% (목표 50% 미달, 갭 4,000)
+    // s2 시가: 10×7,000 = 70,000 → 70% (목표 50% 초과)
+    const quotes = { 'A': { price: 7000 }, 'B': { price: 9000 }, 'C': { price: 7000 } };
+    const items = calculateRebalance(portfolio, quotes, 1300);
+
+    // s1 미달 → A(저가 7,000)에서 1주 추가 매수 추천
+    const buyA = items.find((i) => i.ticker === 'A' && i.action === 'buy');
+    expect(buyA).toBeDefined();
+    expect(buyA!.deltaQuantity).toBe(1);
   });
 
   it('포트폴리오가 비어있으면 빈 배열', () => {

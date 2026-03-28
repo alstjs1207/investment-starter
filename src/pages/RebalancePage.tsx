@@ -176,13 +176,13 @@ export default function RebalancePage() {
             </div>
           )}
 
-          {/* 매도 실행 시 비중 변화 */}
-          {sellItems.length > 0 && (
+          {/* 리밸런싱 실행 시 비중 변화 */}
+          {items.length > 0 && (
             <SectorWeightProjection
               portfolio={portfolio}
               quotes={quotes}
               exchangeRate={exchangeRate}
-              sellItems={sellItems}
+              rebalanceItems={items}
             />
           )}
 
@@ -288,34 +288,36 @@ function SectorWeightProjection({
   portfolio,
   quotes,
   exchangeRate,
-  sellItems,
+  rebalanceItems,
 }: {
   portfolio: Portfolio;
   quotes: Record<string, { price: number }>;
   exchangeRate: number | null;
-  sellItems: RebalanceItem[];
+  rebalanceItems: RebalanceItem[];
 }) {
   const rate = exchangeRate ?? 1300;
   const weights = calculateWeights(portfolio, quotes, exchangeRate);
   const totalBudget = portfolio.totalBudget;
   if (totalBudget === 0) return null;
 
-  const sellAmountBySector = new Map<string, number>();
-  for (const item of sellItems) {
+  // 섹터별 순변동 금액 계산 (매도: -, 매수: +)
+  const netChangeBySector = new Map<string, number>();
+  for (const item of rebalanceItems) {
     const amountKRW = item.currency === 'KRW'
       ? item.estimatedAmount
       : item.estimatedAmount * rate;
-    sellAmountBySector.set(
+    const signed = item.action === 'sell' ? -amountKRW : amountKRW;
+    netChangeBySector.set(
       item.sectorId,
-      (sellAmountBySector.get(item.sectorId) ?? 0) + amountKRW,
+      (netChangeBySector.get(item.sectorId) ?? 0) + signed,
     );
   }
 
   const rows = weights.map((sw) => {
     const currentMarketKRW = sw.marketValueKRW + sw.marketValueUSD * rate;
     const currentWeight = (currentMarketKRW / totalBudget) * 100;
-    const sellAmount = sellAmountBySector.get(sw.sectorId) ?? 0;
-    const afterMarketKRW = currentMarketKRW - sellAmount;
+    const netChange = netChangeBySector.get(sw.sectorId) ?? 0;
+    const afterMarketKRW = currentMarketKRW + netChange;
     const afterWeight = (afterMarketKRW / totalBudget) * 100;
 
     return {
@@ -324,13 +326,13 @@ function SectorWeightProjection({
       currentWeight,
       afterWeight,
       diff: afterWeight - currentWeight,
-      hasSell: sellAmount > 0,
+      hasChange: netChange !== 0,
     };
   });
 
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">매도 실행 시 비중 변화</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">리밸런싱 실행 시 비중 변화</h2>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -339,7 +341,7 @@ function SectorWeightProjection({
                 <th className="px-4 py-2.5">섹터</th>
                 <th className="px-4 py-2.5 text-right">목표</th>
                 <th className="px-4 py-2.5 text-right">현재</th>
-                <th className="px-4 py-2.5 text-right">매도 후</th>
+                <th className="px-4 py-2.5 text-right">실행 후</th>
                 <th className="px-4 py-2.5 text-right">변동</th>
               </tr>
             </thead>
@@ -349,11 +351,11 @@ function SectorWeightProjection({
                   <td className="px-4 py-2.5 font-medium text-slate-700">{row.name}</td>
                   <td className="tabular-nums px-4 py-2.5 text-right text-slate-500">{row.targetWeight.toFixed(1)}%</td>
                   <td className="tabular-nums px-4 py-2.5 text-right">{row.currentWeight.toFixed(1)}%</td>
-                  <td className={`tabular-nums px-4 py-2.5 text-right font-medium ${row.hasSell ? 'text-blue-700' : ''}`}>
+                  <td className={`tabular-nums px-4 py-2.5 text-right font-medium ${row.hasChange ? (row.diff > 0 ? 'text-red-700' : 'text-blue-700') : ''}`}>
                     {row.afterWeight.toFixed(1)}%
                   </td>
                   <td className="tabular-nums px-4 py-2.5 text-right">
-                    {row.diff !== 0 ? (
+                    {Math.abs(row.diff) >= 0.05 ? (
                       <span className={row.diff > 0 ? 'text-red-500' : 'text-blue-500'}>
                         {row.diff > 0 ? '+' : ''}{row.diff.toFixed(1)}%p
                       </span>
